@@ -1,134 +1,101 @@
-resource "aws_vpc" "this" {
+variable "vpc_id" { type = string }
+variable "vpc_cidr" { type = string }
+variable "public_subnet_a_id" { type = string }
+variable "public_subnet_b_id" { type = string }
+variable "private_subnet_a_id" { type = string }
+variable "private_subnet_b_id" { type = string }
+variable "igw_id" { type = string }
+variable "public_rt_id" { type = string }
+variable "private_rt_a_id" { type = string }
+variable "private_rt_b_id" { type = string }
+variable "public_nacl_id" { type = string }
+variable "private_nacl_id" { type = string }
+
+# Imported resources - defined so Terraform can manage them
+# Run: terraform import module.vpc.aws_vpc.main vpc-06c9580f75d4b2149
+resource "aws_vpc" "main" {
   cidr_block           = var.vpc_cidr
   enable_dns_support   = true
   enable_dns_hostnames = true
-
-  tags = {
-    Name = "cloudcorp-vpc"
-  }
+  tags = { Name = "CloudCorp-VPC" }
 }
 
-resource "aws_internet_gateway" "igw" {
-  vpc_id = aws_vpc.this.id
-
-  tags = {
-    Name = "cloudcorp-igw"
-  }
+resource "aws_subnet" "public_a" {
+  vpc_id            = aws_vpc.main.id
+  cidr_block        = "10.0.1.0/24"
+  availability_zone = "eu-north-1a"
+  tags = { Name = "CloudCorp-public-subnet-a" }
 }
 
-# -------------------------
-# Public Subnets
-# -------------------------
-resource "aws_subnet" "public" {
-  for_each = var.public_subnets
-
-  vpc_id                  = aws_vpc.this.id
-  cidr_block              = each.value
-  availability_zone       = "eu-north-1${each.key}"
-  map_public_ip_on_launch = true
-
-  tags = {
-    Name = "public-${each.key}"
-  }
+resource "aws_subnet" "public_b" {
+  vpc_id            = aws_vpc.main.id
+  cidr_block        = "10.0.2.0/24"
+  availability_zone = "eu-north-1b"
+  tags = { Name = "CloudCorp-public-subnet-b" }
 }
 
-# -------------------------
-# Private Subnets
-# -------------------------
-resource "aws_subnet" "private" {
-  for_each = var.private_subnets
-
-  vpc_id            = aws_vpc.this.id
-  cidr_block        = each.value
-  availability_zone = "eu-north-1${each.key}"
-
-  tags = {
-    Name = "private-${each.key}"
-  }
+resource "aws_subnet" "private_a" {
+  vpc_id            = aws_vpc.main.id
+  cidr_block        = "10.0.3.0/24"
+  availability_zone = "eu-north-1a"
+  tags = { Name = "CloudCorp-private-subnet-a" }
 }
 
-# -------------------------
-# NAT Gateways (one per AZ)
-# -------------------------
-resource "aws_eip" "nat" {
-  for_each = var.public_subnets
-
-  vpc = true
-
-  tags = {
-    Name = "nat-eip-${each.key}"
-  }
+resource "aws_subnet" "private_b" {
+  vpc_id            = aws_vpc.main.id
+  cidr_block        = "10.0.4.0/24"
+  availability_zone = "eu-north-1b"
+  tags = { Name = "CloudCorp-private-subnet-b" }
 }
 
-resource "aws_nat_gateway" "nat" {
-  for_each = var.public_subnets
-
-  allocation_id = aws_eip.nat[each.key].id
-  subnet_id     = aws_subnet.public[each.key].id
-
-  tags = {
-    Name = "nat-${each.key}"
-  }
+resource "aws_internet_gateway" "main" {
+  vpc_id = aws_vpc.main.id
+  tags   = { Name = "CloudCorp-igw" }
 }
 
-# -------------------------
-# Route Tables
-# -------------------------
 resource "aws_route_table" "public" {
-  vpc_id = aws_vpc.this.id
-
+  vpc_id = aws_vpc.main.id
   route {
     cidr_block = "0.0.0.0/0"
-    gateway_id = aws_internet_gateway.igw.id
+    gateway_id = aws_internet_gateway.main.id
   }
-
-  tags = {
-    Name = "public-rt"
-  }
+  tags = { Name = "CloudCorp-public-rt" }
 }
 
-resource "aws_route_table_association" "public_assoc" {
-  for_each = aws_subnet.public
-
-  subnet_id      = each.value.id
+resource "aws_route_table_association" "public_a" {
+  subnet_id      = aws_subnet.public_a.id
   route_table_id = aws_route_table.public.id
 }
 
-resource "aws_route_table" "private" {
-  for_each = aws_nat_gateway.nat
-
-  vpc_id = aws_vpc.this.id
-
-  route {
-    cidr_block     = "0.0.0.0/0"
-    nat_gateway_id = each.value.id
-  }
-
-  tags = {
-    Name = "private-rt-${each.key}"
-  }
+resource "aws_route_table_association" "public_b" {
+  subnet_id      = aws_subnet.public_b.id
+  route_table_id = aws_route_table.public.id
 }
 
-resource "aws_route_table_association" "private_assoc" {
-  for_each = aws_subnet.private
-
-  subnet_id      = each.value.id
-  route_table_id = aws_route_table.private[each.key].id
+resource "aws_route_table" "private_a" {
+  vpc_id = aws_vpc.main.id
+  tags   = { Name = "CloudCorp-private-rt-a" }
 }
 
-# -------------------------
-# VPC Endpoint for S3
-# -------------------------
-resource "aws_vpc_endpoint" "s3" {
-  vpc_id       = aws_vpc.this.id
-  service_name = "com.amazonaws.eu-north-1.s3"
-  vpc_endpoint_type = "Gateway"
-
-  route_table_ids = [
-    for rt in aws_route_table.private : rt.id
-  ]
-
-  tags = {
-    Name = "s3-endpoint"
-  }
+resource "aws_route_table" "private_b" {
+  vpc_id = aws_vpc.main.id
+  tags   = { Name = "CloudCorp-private-rt-b" }
 }
+
+resource "aws_route_table_association" "private_a" {
+  subnet_id      = aws_subnet.private_a.id
+  route_table_id = aws_route_table.private_a.id
+}
+
+resource "aws_route_table_association" "private_b" {
+  subnet_id      = aws_subnet.private_b.id
+  route_table_id = aws_route_table.private_b.id
+}
+
+output "vpc_id" { value = aws_vpc.main.id }
+output "public_subnet_a_id" { value = aws_subnet.public_a.id }
+output "public_subnet_b_id" { value = aws_subnet.public_b.id }
+output "private_subnet_a_id" { value = aws_subnet.private_a.id }
+output "private_subnet_b_id" { value = aws_subnet.private_b.id }
+output "private_rt_a_id" { value = aws_route_table.private_a.id }
+output "private_rt_b_id" { value = aws_route_table.private_b.id }
