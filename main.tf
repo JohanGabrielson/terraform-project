@@ -24,7 +24,7 @@ resource "aws_kms_key" "general" {
 }
 
 # -------------------------
-# VPC (importerad: vpc-06c9580f75d4b2149)
+# VPC (vpc-06c9580f75d4b2149)
 # -------------------------
 module "vpc" {
   source = "./modules/vpc"
@@ -47,7 +47,7 @@ module "vpc" {
 }
 
 # -------------------------
-# Security Groups (importerade)
+# Security Groups (imported)
 # -------------------------
 module "security_groups" {
   source = "./modules/security_groups"
@@ -73,7 +73,7 @@ module "alb" {
 }
 
 # -------------------------
-# IAM-roller EC2
+# IAM-roles  EC2
 # -------------------------
 resource "aws_iam_role" "frontend" {
   name = "cloudcorp-frontend-role"

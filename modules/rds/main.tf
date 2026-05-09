@@ -20,7 +20,7 @@ resource "aws_db_parameter_group" "postgres" {
 resource "aws_db_instance" "this" {
   identifier              = "cloudcorp-db"
   engine                  = "postgres"
-  engine_version          = "15.4"
+  engine_version = "15.10"
   instance_class          = var.instance_class
   allocated_storage       = 20
   max_allocated_storage   = 100
