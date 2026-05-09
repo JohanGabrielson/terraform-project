@@ -99,3 +99,40 @@ output "private_subnet_a_id" { value = aws_subnet.private_a.id }
 output "private_subnet_b_id" { value = aws_subnet.private_b.id }
 output "private_rt_a_id" { value = aws_route_table.private_a.id }
 output "private_rt_b_id" { value = aws_route_table.private_b.id }
+
+
+resource "aws_eip" "nat_a" {
+  domain = "vpc"
+  tags   = { Name = "cloudcorp-nat-eip-a" }
+}
+
+resource "aws_eip" "nat_b" {
+  domain = "vpc"
+  tags   = { Name = "cloudcorp-nat-eip-b" }
+}
+
+resource "aws_nat_gateway" "nat_a" {
+  allocation_id = aws_eip.nat_a.id
+  subnet_id     = aws_subnet.public_a.id
+  tags          = { Name = "CloudCorp-NAT-A" }
+  depends_on    = [aws_internet_gateway.main]
+}
+
+resource "aws_nat_gateway" "nat_b" {
+  allocation_id = aws_eip.nat_b.id
+  subnet_id     = aws_subnet.public_b.id
+  tags          = { Name = "CloudCorp-NAT-B" }
+  depends_on    = [aws_internet_gateway.main]
+}
+
+resource "aws_route" "private_a_nat" {
+  route_table_id         = aws_route_table.private_a.id
+  destination_cidr_block = "0.0.0.0/0"
+  nat_gateway_id         = aws_nat_gateway.nat_a.id
+}
+
+resource "aws_route" "private_b_nat" {
+  route_table_id         = aws_route_table.private_b.id
+  destination_cidr_block = "0.0.0.0/0"
+  nat_gateway_id         = aws_nat_gateway.nat_b.id
+}
