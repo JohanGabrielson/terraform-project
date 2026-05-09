@@ -1,15 +1,9 @@
 variable "vpc_id" { type = string }
-variable "alb_sg_id" { type = string }
-variable "frontend_sg_id" { type = string }
-variable "backend_sg_id" { type = string }
-variable "rds_sg_id" { type = string }
-variable "cache_sg_id" { type = string }
 
-# Importerade security groups
-# terraform import module.security_groups.aws_security_group.alb sg-05d0cc0b3cec5b7b9
+# Security groups - controls traffic flow between layers
 resource "aws_security_group" "alb" {
   name        = "CloudCorp-alb-sg"
-  description = "alb security group"
+  description = "ALB security group - allows HTTP and HTTPS from internet"
   vpc_id      = var.vpc_id
 
   ingress {
@@ -36,10 +30,10 @@ resource "aws_security_group" "alb" {
   tags = { Name = "CloudCorp-alb-sg" }
 }
 
-# terraform import module.security_groups.aws_security_group.frontend sg-0404bf5ab212227f2
+# Frontend - only reachable from ALB
 resource "aws_security_group" "frontend" {
   name        = "CloudCorp-frontend-sg"
-  description = "Frontend security group"
+  description = "Frontend - only allow traffic from ALB"
   vpc_id      = var.vpc_id
 
   ingress {
@@ -59,10 +53,10 @@ resource "aws_security_group" "frontend" {
   tags = { Name = "CloudCorp-frontend-sg" }
 }
 
-# terraform import module.security_groups.aws_security_group.backend sg-0b64e452e28a76283
+# Backend - only reachable from frontend
 resource "aws_security_group" "backend" {
   name        = "CloudCorp-backend-sg"
-  description = "backend api - only allow frontend"
+  description = "Backend - only allow traffic from frontend"
   vpc_id      = var.vpc_id
 
   ingress {
@@ -82,10 +76,10 @@ resource "aws_security_group" "backend" {
   tags = { Name = "CloudCorp-backend-sg" }
 }
 
-# terraform import module.security_groups.aws_security_group.rds sg-0a1d06300ce851c7a
+# RDS - only reachable from backend on PostgreSQL port
 resource "aws_security_group" "rds" {
   name        = "CloudCorp-rds-sg"
-  description = "RDS SG - only allow backend"
+  description = "RDS - only allow PostgreSQL traffic from backend"
   vpc_id      = var.vpc_id
 
   ingress {
@@ -105,10 +99,10 @@ resource "aws_security_group" "rds" {
   tags = { Name = "CloudCorp-rds-sg" }
 }
 
-# terraform import module.security_groups.aws_security_group.cache sg-028c0bd4038a9373e
+# Cache - only reachable from backend on Redis port
 resource "aws_security_group" "cache" {
   name        = "CloudCorp-cache-sg"
-  description = "Cache - only allow backend"
+  description = "Cache - only allow Redis traffic from backend"
   vpc_id      = var.vpc_id
 
   ingress {

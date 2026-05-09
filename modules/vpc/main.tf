@@ -1,18 +1,7 @@
-variable "vpc_id" { type = string }
+# input variables
 variable "vpc_cidr" { type = string }
-variable "public_subnet_a_id" { type = string }
-variable "public_subnet_b_id" { type = string }
-variable "private_subnet_a_id" { type = string }
-variable "private_subnet_b_id" { type = string }
-variable "igw_id" { type = string }
-variable "public_rt_id" { type = string }
-variable "private_rt_a_id" { type = string }
-variable "private_rt_b_id" { type = string }
-variable "public_nacl_id" { type = string }
-variable "private_nacl_id" { type = string }
 
-# Imported resources - defined so Terraform can manage them
-# Run: terraform import module.vpc.aws_vpc.main vpc-06c9580f75d4b2149
+# VPC and network resources
 resource "aws_vpc" "main" {
   cidr_block           = var.vpc_cidr
   enable_dns_support   = true
@@ -92,15 +81,6 @@ resource "aws_route_table_association" "private_b" {
   route_table_id = aws_route_table.private_b.id
 }
 
-output "vpc_id" { value = aws_vpc.main.id }
-output "public_subnet_a_id" { value = aws_subnet.public_a.id }
-output "public_subnet_b_id" { value = aws_subnet.public_b.id }
-output "private_subnet_a_id" { value = aws_subnet.private_a.id }
-output "private_subnet_b_id" { value = aws_subnet.private_b.id }
-output "private_rt_a_id" { value = aws_route_table.private_a.id }
-output "private_rt_b_id" { value = aws_route_table.private_b.id }
-
-
 resource "aws_eip" "nat_a" {
   domain = "vpc"
   tags   = { Name = "cloudcorp-nat-eip-a" }
@@ -136,3 +116,11 @@ resource "aws_route" "private_b_nat" {
   destination_cidr_block = "0.0.0.0/0"
   nat_gateway_id         = aws_nat_gateway.nat_b.id
 }
+
+output "vpc_id" { value = aws_vpc.main.id }
+output "public_subnet_a_id" { value = aws_subnet.public_a.id }
+output "public_subnet_b_id" { value = aws_subnet.public_b.id }
+output "private_subnet_a_id" { value = aws_subnet.private_a.id }
+output "private_subnet_b_id" { value = aws_subnet.private_b.id }
+output "private_rt_a_id" { value = aws_route_table.private_a.id }
+output "private_rt_b_id" { value = aws_route_table.private_b.id }

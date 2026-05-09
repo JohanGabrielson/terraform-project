@@ -3,10 +3,6 @@ variable "region" {
   default = "eu-north-1"
 }
 
-variable "certificate_arn" {
-  description = "ACM certificate ARN for ALB HTTPS listener"
-  type        = string
-}
 
 variable "ami" {
   description = "AMI ID for EC2 instances"
@@ -43,7 +39,4 @@ variable "db_password" {
   sensitive   = true
 }
 
-variable "kms_key_id" {
-  type    = string
-  default = ""
-}
+

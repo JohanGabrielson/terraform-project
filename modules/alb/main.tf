@@ -1,3 +1,9 @@
+# Input variables
+variable "public_subnets" { type = list(string) }
+variable "vpc_id"         { type = string }
+variable "alb_sg"         { type = string }
+
+# Application Load Balancer - single entry point for external traffic
 resource "aws_lb" "this" {
   name                       = "cloudcorp-alb"
   load_balancer_type         = "application"
@@ -9,6 +15,7 @@ resource "aws_lb" "this" {
   }
 }
 
+# Target group - forwards traffic to frontend instances
 resource "aws_lb_target_group" "frontend" {
   name     = "frontend-tg"
   port     = 80
@@ -23,6 +30,7 @@ resource "aws_lb_target_group" "frontend" {
   }
 }
 
+# HTTP listener - forwards to frontend target group
 resource "aws_lb_listener" "http" {
   load_balancer_arn = aws_lb.this.arn
   port              = 80
@@ -32,3 +40,6 @@ resource "aws_lb_listener" "http" {
     target_group_arn = aws_lb_target_group.frontend.arn
   }
 }
+
+output "alb_dns" { value = aws_lb.this.dns_name }
+output "target_group_arn" { value = aws_lb_target_group.frontend.arn }

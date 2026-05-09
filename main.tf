@@ -24,53 +24,31 @@ resource "aws_kms_key" "general" {
 }
 
 # -------------------------
-# VPC (vpc-06c9580f75d4b2149)
+# VPC
 # -------------------------
 module "vpc" {
-  source = "./modules/vpc"
-
-  vpc_id   = "vpc-06c9580f75d4b2149"
+  source   = "./modules/vpc"
   vpc_cidr = "10.0.0.0/16"
-
-  public_subnet_a_id   = "subnet-09e66d57813d531fa"
-  public_subnet_b_id   = "subnet-0d2f4017ec5a3db88"
-  private_subnet_a_id  = "subnet-04d704525cf3572c4"
-  private_subnet_b_id  = "subnet-08cc4630c5b8211b6"
-
-  igw_id              = "igw-0bb1673d63052e490"
-  public_rt_id        = "rtb-0301d58257f95303c"
-  private_rt_a_id     = "rtb-05083d4986d10b911"
-  private_rt_b_id     = "rtb-0aa3dc2f36c6b6a85"
-
-  public_nacl_id      = "acl-032adc0496912c776"
-  private_nacl_id     = "acl-08eac83afec5cce5a"
 }
 
 # -------------------------
-# Security Groups (imported)
+# Security Groups
 # -------------------------
 module "security_groups" {
   source = "./modules/security_groups"
-
-  vpc_id           = module.vpc.vpc_id
-  alb_sg_id        = "sg-05d0cc0b3cec5b7b9"
-  frontend_sg_id   = "sg-0404bf5ab212227f2"
-  backend_sg_id    = "sg-0b64e452e28a76283"
-  rds_sg_id        = "sg-0a1d06300ce851c7a"
-  cache_sg_id      = "sg-028c0bd4038a9373e"
+  vpc_id = module.vpc.vpc_id
 }
 
 # -------------------------
 # ALB
 # -------------------------
 module "alb" {
-  source = "./modules/alb"
-
-  public_subnets  = [module.vpc.public_subnet_a_id, module.vpc.public_subnet_b_id]
-  vpc_id          = module.vpc.vpc_id
-  alb_sg          = module.security_groups.alb_sg
-  certificate_arn = var.certificate_arn
+  source         = "./modules/alb"
+  public_subnets = [module.vpc.public_subnet_a_id, module.vpc.public_subnet_b_id]
+  vpc_id         = module.vpc.vpc_id
+  alb_sg         = module.security_groups.alb_sg
 }
+
 
 # -------------------------
 # IAM-roles  EC2
@@ -123,8 +101,7 @@ resource "aws_iam_instance_profile" "backend" {
 # EC2 Frontend + Backend
 # -------------------------
 module "ec2" {
-  source = "./modules/ec2"
-
+  source           = "./modules/ec2"
   ami              = var.ami
   instance_type    = var.instance_type
   private_subnet_a = module.vpc.private_subnet_a_id
@@ -139,12 +116,11 @@ module "ec2" {
 # RDS Multi-AZ
 # -------------------------
 module "rds" {
-  source = "./modules/rds"
-
+  source          = "./modules/rds"
   private_subnets = [module.vpc.private_subnet_a_id, module.vpc.private_subnet_b_id]
   rds_sg          = module.security_groups.rds_sg
   instance_class  = var.rds_instance_class
-  kms_key_id      = aws_kms_key.general.arn   # fixed: was var.kms_key_id, now uses generated key ARN
+  kms_key_id      = aws_kms_key.general.arn
   db_username     = var.db_username
   db_password     = var.db_password
 }
@@ -153,8 +129,7 @@ module "rds" {
 # ElastiCache Redis
 # -------------------------
 module "elasticache" {
-  source = "./modules/elasticache"
-
+  source          = "./modules/elasticache"
   private_subnets = [module.vpc.private_subnet_a_id, module.vpc.private_subnet_b_id]
   cache_sg        = module.security_groups.cache_sg
   node_type       = var.cache_node_type
@@ -164,7 +139,7 @@ module "elasticache" {
 # S3 bucket
 # -------------------------
 resource "aws_s3_bucket" "data" {
-  bucket = "cloudcorp-customer-data"
+  bucket_prefix = "cloudcorp-customer-data-"
   tags = {
     Name = "cloudcorp-customer-data"
   }
