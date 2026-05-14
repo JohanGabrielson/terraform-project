@@ -37,6 +37,99 @@ resource "aws_subnet" "private_b" {
   tags = { Name = "CloudCorp-private-subnet-b" }
 }
 
+resource "aws_network_acl" "public" {
+  vpc_id = aws_vpc.main.id
+  subnet_ids = [
+    aws_subnet.public_a.id,
+    aws_subnet.public_b.id
+  ]
+
+  # Inbound: allow HTTP
+  ingress {
+    rule_no    = 100
+    protocol   = "tcp"
+    action     = "allow"
+    cidr_block = "0.0.0.0/0"
+    from_port  = 80
+    to_port    = 80
+  }
+
+  # Inbound: allow HTTPS
+  ingress {
+    rule_no    = 110
+    protocol   = "tcp"
+    action     = "allow"
+    cidr_block = "0.0.0.0/0"
+    from_port  = 443
+    to_port    = 443
+  }
+
+  # Outbound: allow ephemeral ports
+  egress {
+    rule_no    = 100
+    protocol   = "tcp"
+    action     = "allow"
+    cidr_block = "0.0.0.0/0"
+    from_port  = 1024
+    to_port    = 65535
+  }
+
+  tags = {
+    Name = "CloudCorp-public-nacl"
+  }
+}
+
+resource "aws_network_acl" "private" {
+  vpc_id = aws_vpc.main.id
+  subnet_ids = [
+    aws_subnet.private_a.id,
+    aws_subnet.private_b.id
+  ]
+
+  # Allow all inbound from private subnets
+  ingress {
+    rule_no    = 100
+    protocol   = "-1"
+    action     = "allow"
+    cidr_block = aws_subnet.private_a.cidr_block
+    from_port  = 0
+    to_port    = 0
+  }
+
+  ingress {
+    rule_no    = 110
+    protocol   = "-1"
+    action     = "allow"
+    cidr_block = aws_subnet.private_b.cidr_block
+    from_port  = 0
+    to_port    = 0
+  }
+
+  # Deny everything else
+  ingress {
+    rule_no    = 200
+    protocol   = "-1"
+    action     = "deny"
+    cidr_block = "0.0.0.0/0"
+    from_port  = 0
+    to_port    = 0
+  }
+
+  # Outbound: allow all
+  egress {
+    rule_no    = 100
+    protocol   = "-1"
+    action     = "allow"
+    cidr_block = "0.0.0.0/0"
+    from_port  = 0
+    to_port    = 0
+  }
+
+  tags = {
+    Name = "CloudCorp-private-nacl"
+  }
+}
+
 resource "aws_internet_gateway" "main" {
   vpc_id = aws_vpc.main.id
   tags   = { Name = "CloudCorp-igw" }
@@ -117,10 +210,10 @@ resource "aws_route" "private_b_nat" {
   nat_gateway_id         = aws_nat_gateway.nat_b.id
 }
 
-output "vpc_id" { value = aws_vpc.main.id }
-output "public_subnet_a_id" { value = aws_subnet.public_a.id }
-output "public_subnet_b_id" { value = aws_subnet.public_b.id }
-output "private_subnet_a_id" { value = aws_subnet.private_a.id }
-output "private_subnet_b_id" { value = aws_subnet.private_b.id }
-output "private_rt_a_id" { value = aws_route_table.private_a.id }
-output "private_rt_b_id" { value = aws_route_table.private_b.id }
+output "vpc_id"               { value = aws_vpc.main.id }
+output "public_subnet_a_id"   { value = aws_subnet.public_a.id }
+output "public_subnet_b_id"   { value = aws_subnet.public_b.id }
+output "private_subnet_a_id"  { value = aws_subnet.private_a.id }
+output "private_subnet_b_id"  { value = aws_subnet.private_b.id }
+output "private_rt_a_id"      { value = aws_route_table.private_a.id }
+output "private_rt_b_id"      { value = aws_route_table.private_b.id }

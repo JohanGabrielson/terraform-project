@@ -40,18 +40,7 @@ module "security_groups" {
 }
 
 # -------------------------
-# ALB
-# -------------------------
-module "alb" {
-  source         = "./modules/alb"
-  public_subnets = [module.vpc.public_subnet_a_id, module.vpc.public_subnet_b_id]
-  vpc_id         = module.vpc.vpc_id
-  alb_sg         = module.security_groups.alb_sg
-}
-
-
-# -------------------------
-# IAM-roles  EC2
+# IAM Roles + Instance Profiles
 # -------------------------
 resource "aws_iam_role" "frontend" {
   name = "cloudcorp-frontend-role"
@@ -68,6 +57,11 @@ resource "aws_iam_role" "frontend" {
 resource "aws_iam_role_policy_attachment" "frontend_ssm" {
   role       = aws_iam_role.frontend.name
   policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+}
+
+resource "aws_iam_instance_profile" "frontend" {
+  name = "cloudcorp-frontend-profile"
+  role = aws_iam_role.frontend.name
 }
 
 resource "aws_iam_role" "backend" {
@@ -87,30 +81,58 @@ resource "aws_iam_role_policy_attachment" "backend_ssm" {
   policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
 }
 
-resource "aws_iam_instance_profile" "frontend" {
-  name = "cloudcorp-frontend-profile"
-  role = aws_iam_role.frontend.name
-}
-
 resource "aws_iam_instance_profile" "backend" {
   name = "cloudcorp-backend-profile"
   role = aws_iam_role.backend.name
 }
 
 # -------------------------
-# EC2 Frontend + Backend
+# Application Load Balancer
 # -------------------------
-module "ec2" {
-  source           = "./modules/ec2"
-  ami              = var.ami
-  instance_type    = var.instance_type
-  private_subnet_a = module.vpc.private_subnet_a_id
-  private_subnet_b = module.vpc.private_subnet_b_id
-  frontend_sg      = module.security_groups.frontend_sg
-  backend_sg       = module.security_groups.backend_sg
-  frontend_profile = aws_iam_instance_profile.frontend.name
-  backend_profile  = aws_iam_instance_profile.backend.name
+module "alb" {
+  source         = "./modules/alb"
+  public_subnets = [module.vpc.public_subnet_a_id, module.vpc.public_subnet_b_id]
+  vpc_id         = module.vpc.vpc_id
+  alb_sg         = module.security_groups.alb_sg
 }
+
+# -------------------------
+# Frontend auto scaling group
+# -------------------------
+module "frontend_asg" {
+  source = "./modules/frontend_asg"
+
+  ami                  = var.ami
+  instance_type        = var.instance_type
+  security_group_id    = module.security_groups.frontend_sg
+  iam_instance_profile = aws_iam_instance_profile.frontend.name
+  subnet_ids           = [module.vpc.private_subnet_a_id, module.vpc.private_subnet_b_id]
+  target_group_arn     = module.alb.frontend_tg_arn
+  environment          = "prod"
+}
+
+
+# -------------------------
+# Backend auto scaling Group
+# -------------------------
+module "backend_asg" {
+  source = "./modules/backend_asg"
+
+  ami                  = var.ami
+  instance_type        = var.instance_type
+  security_group_id    = module.security_groups.backend_sg
+  iam_instance_profile = aws_iam_instance_profile.backend.name
+  subnet_ids           = [module.vpc.private_subnet_a_id, module.vpc.private_subnet_b_id]
+  target_group_arn     = module.alb.backend_tg_arn
+  environment          = "prod"
+
+  # Scaling
+  min_size         = 2
+  max_size         = 4
+  desired_capacity = 2
+  cpu_target       = 60
+}
+
 
 # -------------------------
 # RDS Multi-AZ
@@ -182,3 +204,5 @@ resource "aws_vpc_endpoint" "s3" {
     Name = "cloudcorp-s3-endpoint"
   }
 }
+
+
