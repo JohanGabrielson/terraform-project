@@ -13,8 +13,10 @@ resource "aws_launch_template" "frontend" {
 
   user_data = base64encode(<<-EOF
 #!/bin/bash
-apt update -y
-apt install -y nginx
+dnf update -y
+dnf install -y nginx
+
+mkdir -p /var/www/html
 
 cat << 'HTML' > /var/www/html/index.html
 <!DOCTYPE html>
@@ -30,7 +32,7 @@ cat << 'HTML' > /var/www/html/index.html
 HTML
 
 systemctl enable nginx
-systemctl restart nginx
+systemctl start nginx
 EOF
   )
 

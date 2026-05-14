@@ -13,8 +13,8 @@ resource "aws_launch_template" "backend" {
 
   user_data = base64encode(<<-EOF
 #!/bin/bash
-apt update -y
-apt install -y python3 python3-pip
+dnf update -y
+dnf install -y python3 python3-pip
 
 mkdir -p /opt/backend
 cd /opt/backend
@@ -29,7 +29,7 @@ def message():
     return {"message": "Hello from backend"}
 APP
 
-pip3 install fastapi uvicorn
+pip3 install fastapi uvicorn --break-system-packages
 
 nohup uvicorn app:app --host 0.0.0.0 --port 8080 &
 EOF
