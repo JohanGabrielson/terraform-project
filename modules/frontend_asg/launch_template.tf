@@ -13,6 +13,9 @@ resource "aws_launch_template" "frontend" {
 
   user_data = base64encode(<<-EOF
 #!/bin/bash
+
+sleep 30
+
 dnf update -y
 dnf install -y nginx
 

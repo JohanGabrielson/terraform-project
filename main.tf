@@ -94,10 +94,11 @@ module "alb" {
   public_subnets = [module.vpc.public_subnet_a_id, module.vpc.public_subnet_b_id]
   vpc_id         = module.vpc.vpc_id
   alb_sg         = module.security_groups.alb_sg
+  depends_on     = [module.vpc]
 }
 
 # -------------------------
-# Frontend auto scaling group
+# Frontend Auto Scaling Group
 # -------------------------
 module "frontend_asg" {
   source = "./modules/frontend_asg"
@@ -109,11 +110,12 @@ module "frontend_asg" {
   subnet_ids           = [module.vpc.private_subnet_a_id, module.vpc.private_subnet_b_id]
   target_group_arn     = module.alb.frontend_tg_arn
   environment          = "prod"
+
+  depends_on = [module.vpc, module.alb]
 }
 
-
 # -------------------------
-# Backend auto scaling Group
+# Backend Auto Scaling Group
 # -------------------------
 module "backend_asg" {
   source = "./modules/backend_asg"
@@ -126,13 +128,13 @@ module "backend_asg" {
   target_group_arn     = module.alb.backend_tg_arn
   environment          = "prod"
 
-  # Scaling
   min_size         = 2
   max_size         = 4
   desired_capacity = 2
   cpu_target       = 60
-}
 
+  depends_on = [module.vpc, module.alb]
+}
 
 # -------------------------
 # RDS Multi-AZ
@@ -204,5 +206,3 @@ resource "aws_vpc_endpoint" "s3" {
     Name = "cloudcorp-s3-endpoint"
   }
 }
-
-
